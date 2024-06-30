@@ -1,13 +1,19 @@
 #include "nexus.h"
 #include "networking.h"
 #include <stdint.h>
+#include <stdio.h>
 
 #define MY_ADDON_ID  -1234
 //NOTE(Rennorb): We will set these in the Load event:
 // Send function: `bool PrepareAndBroadcastPacket(Packet* packet)`
 PacketPrepareAndBroadcast* PrepareAndBroadcastPacket = 0;
 LOGGER_LOG2 Log = 0;
-#define _LOG(lvl, fmt, ...) Log(ELogLevel::ELogLevel_ ## lvl, "PingPongAddon", fmt, __VA_ARGS__)
+#define _LOG(lvl, str) Log(ELogLevel::ELogLevel_ ## lvl, "PingPongAddon", str)
+#define _LOGF(lvl, fmt, ...) { \
+	char buffer[4096]; \
+	snprintf(buffer, 4095, fmt, __VA_ARGS__); \
+	Log(ELogLevel::ELogLevel_ ## lvl, "PingPongAddon", buffer); \
+}
 
 
 
@@ -40,14 +46,15 @@ void ProcessMyKeybinds(const char* aIdentifier, bool aIsRelease)
 	if(aIsRelease) return; // only on key press
 
 	MyPacket ping {};
-	ping.Header.TargetAddon = MY_ADDON_ID,
-	ping.Header.LengthInU32s = PACKET_LEN(ping),
-	ping.Header.PacketType = PacketType::Ping,
+	ping.Header.TargetAddon = MY_ADDON_ID;
+	ping.Header.LengthInU32s = PACKET_LEN(ping);
+	ping.Header.PacketType = PacketType::Ping;
 
-	ping.Payload = 1; // set some random payload
+	static uint32_t next = 1;
+	ping.Payload = next++; // set some random payload
 
 	PrepareAndBroadcastPacket((Packet*)&ping);
-	_LOG(TRACE, "Ping sent");
+	_LOGF(TRACE, "Ping sent with payload %d", ping.Payload);
 }
 
 void HandleIncomingPacket(Packet const* _packet)
@@ -55,7 +62,7 @@ void HandleIncomingPacket(Packet const* _packet)
 	auto packet = (MyPacket const*)_packet;
 	switch(packet->Header.PacketType) {
 	case PacketType::Ping: {
-		_LOG(INFO, "ping received");
+		_LOGF(INFO, "ping received with payload %d", packet->Payload);
 
 		MyPacket response {};
 		response.Header.TargetAddon = MY_ADDON_ID;
@@ -65,18 +72,16 @@ void HandleIncomingPacket(Packet const* _packet)
 		response.Payload = packet->Payload; //copy over the payload
 
 		PrepareAndBroadcastPacket((Packet*)&response);
-		_LOG(TRACE, "pong sent");
+		_LOGF(TRACE, "pong sent with copied payload %d", response.Payload);
 	} break;
 
 	case PacketType::Pong: {
-		_LOG(INFO, "pong received");
-		auto payload = packet->Payload;
-		//NOTE(Rennorb): For the sake of keeping it short I dont format the number into the string here, but you get the idea.
+		_LOGF(INFO, "pong received with payload %d", packet->Payload);
 	} break;
 
 
 	default:
-		_LOG(TRACE, "Unknown packet received");
+		_LOGF(TRACE, FORMAT_DISCARD_MESSAGE(packet));
 	}
 }
 
