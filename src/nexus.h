@@ -453,8 +453,9 @@ typedef enum EAddonFlags
 {
 	EAddonFlags_None = 0,
 	EAddonFlags_IsVolatile = 1,				/* is hooking functions or doing anything else that's volatile and game build dependant */
-	EAddonFlags_DisableHotloading = 2,			/* prevents unloading at runtime, aka. will require a restart if updated, etc. */
-	EAddonFlags_OnlyLoadDuringGameLaunchSequence = 4	/* prevents loading the addon later than the initial character select */
+	EAddonFlags_DisableHotloading = 1 << 1,			/* prevents unloading at runtime, aka. will require a restart if updated, etc. */
+	EAddonFlags_OnlyLoadDuringGameLaunchSequence = 1 << 2,	/* prevents loading the addon later than the initial character select */
+	EAddonFlags_UsesCaps = 1 << 4,
 } EAddonFlags;
 
 typedef enum EUpdateProvider
@@ -464,6 +465,21 @@ typedef enum EUpdateProvider
 	EUpdateProvider_GitHub		= 2,	/* Provider is GitHub Releases */
 	EUpdateProvider_Direct		= 3		/* Provider is direct file link */
 } EUpdateProvider;
+
+struct Capability {
+	char const* Name;
+	AddonVersion Version;
+};
+struct CapabilityRequirement
+{
+	char const* Capability;
+	AddonVersion MinVersion, MaxVersion;
+	enum {
+		Optional = 1 << 0,
+	} Flags;
+
+};
+#define UNBOUNDED_VERSION AddonVersion {}
 
 typedef struct AddonDefinition
 {
@@ -481,6 +497,9 @@ typedef struct AddonDefinition
 	/* update fallback */
 	EUpdateProvider Provider;       /* What platform is the the addon hosted on */
 	const char*     UpdateLink;     /* Link to the update resource */
+
+	Capability* ProvidesCapabilities; // terminated list. the terminator has a null name ptr 
+	CapabilityRequirement* RequiredCapabilities; // terminated list. the terminator has a null capability ptr
 } AddonDefinition;
 
 #endif

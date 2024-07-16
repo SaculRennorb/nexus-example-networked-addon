@@ -91,10 +91,18 @@ void HandleIncomingPacket(Packet const* _packet)
 void MyAddonLoad(AddonAPI* api)
 {
 	Log = api->Log;
+	/*
 	PrepareAndBroadcastPacket = api->PrepareAndBroadcastPacket;
 	api->HandleIncomingPacket = &HandleIncomingPacket;
+	*/
 	api->RegisterKeybindWithString("send_pings", &ProcessMyKeybinds, "S");
 }
+
+CapabilityRequirement MyRequiredCaps[] = {
+	{"networking", UNBOUNDED_VERSION, UNBOUNDED_VERSION},
+	{"plen_go_renderer", UNBOUNDED_VERSION, UNBOUNDED_VERSION},
+	{},
+};
 
 
 // Usual addon stuff, expose the info struct...
@@ -108,6 +116,8 @@ AddonDefinition MyAddonDefinition {
 	.Description = "Example addon with networking functionality.",
 	.Load        = MyAddonLoad,
 	.Unload      = NOOP, // required so we are allowed to hotreload
+	.Flags       = EAddonFlags_UsesCaps,
+	.RequiredCapabilities = MyRequiredCaps,
 };
 extern "C" __declspec(dllexport) void* __cdecl GetAddonDef() { return &MyAddonDefinition; }
 
